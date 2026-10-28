@@ -1,0 +1,44 @@
+{
+  "name": "dsh-plugin-codex-link",
+  "version": "0.1.0",
+  "description": "DSH 与 Codex 的会话控制桥：在 DSH 里切换 Codex 会话、发送指令、读取运行过程并取回结果。",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "files": [
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test",
+    "check": "node tools/check.mjs",
+    "verify": "node tools/check.mjs && node --test test",
+    "integration": "node scripts/integration.mjs",
+    "protocol-smoke": "node scripts/integration.mjs --protocol-only"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.2.1-rc.3": "compatible"
+      }
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "codex",
+    "openai-codex",
+    "app-server",
+    "会话控制"
+  ]
+}
