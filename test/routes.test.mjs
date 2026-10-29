@@ -96,6 +96,12 @@ function fakeController() {
     async bindThread(threadId) {
       return { threadId, title: '会话' };
     },
+    setWorkspace(workspaceRoot) {
+      return { workspaceRoot };
+    },
+    browseDirectory(options) {
+      return { path: options?.path ?? 'C:\\Users\\me', parent: null, entries: [], drives: ['C:\\'], error: null };
+    },
   };
 }
 
@@ -153,6 +159,22 @@ test('未知路由 404，控制器异常 500', async () => {
   await routes2.handler(fakeRequest('GET', `${ROUTE_PREFIX}/state`), failed);
   assert.equal(failed.status, 500);
   assert.match(JSON.parse(failed.body).error, /boom/u);
+});
+
+test('POST /workspace 保存工作区，GET /fs 浏览目录', async () => {
+  const warnings = [];
+  const routes = setup(fakeController(), warnings);
+  const saved = fakeResponse();
+  await routes.handler(fakeRequest('POST', `${ROUTE_PREFIX}/workspace`, { workspaceRoot: 'D:\\project' }), saved);
+  assert.equal(saved.status, 200);
+  assert.equal(JSON.parse(saved.body).workspaceRoot, 'D:\\project');
+
+  const listing = fakeResponse();
+  await routes.handler(fakeRequest('GET', `${ROUTE_PREFIX}/fs?path=D%3A%5Cproject`), listing);
+  assert.equal(listing.status, 200);
+  const body = JSON.parse(listing.body);
+  assert.equal(body.path, 'D:\\project');
+  assert.deepEqual(body.drives, ['C:\\']);
 });
 
 test('client-error 记录告警并返回 200', async () => {

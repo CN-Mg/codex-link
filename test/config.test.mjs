@@ -7,11 +7,11 @@ import assert from 'node:assert/strict';
 
 import { DEFAULTS, describeConfig, resolveConfig } from '../lib/config.js';
 
-test('默认值完整且工作区指向 Codex 的 Wechat 项目', () => {
+test('默认值：工作区留空表示自动，会话名有通用默认', () => {
   const settings = resolveConfig(undefined);
   assert.equal(settings.enabled, true);
-  assert.equal(settings.workspaceRoot, 'C:\\Users\\Bolin\\Desktop\\DSH\\Wechat');
-  assert.equal(settings.defaultThreadName, '微信工作区（DSH）');
+  assert.equal(settings.workspaceRoot, '');
+  assert.equal(settings.defaultThreadName, 'DSH 工作区');
   assert.equal(settings.sandbox, 'workspace-write');
   assert.equal(settings.approvalPolicy, 'never');
   assert.equal(settings.approvals, 'deny');

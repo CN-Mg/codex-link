@@ -62,3 +62,17 @@ test('损坏 JSON 按默认值处理并告警', () => {
     assert.equal(store.setMode('direct'), 'direct');
   });
 });
+test('设置页可以保存/恢复工作区', () => {
+  withTempDirectory((directory) => {
+    const filePath = join(directory, 'ui.json');
+    const store = new UiStore({ filePath });
+    assert.equal(store.getWorkspaceRoot(), '');
+    assert.equal(store.setWorkspaceRoot('D:\\project'), 'D:\\project');
+    assert.equal(store.getWorkspaceRoot(), 'D:\\project');
+    assert.equal(JSON.parse(readFileSync(filePath, 'utf8')).workspaceRoot, 'D:\\project');
+    assert.equal(store.setWorkspaceRoot('   '), '');
+    assert.equal(store.getWorkspaceRoot(), '');
+    const reopened = new UiStore({ filePath });
+    assert.equal(reopened.getMode(), 'hybrid');
+  });
+});

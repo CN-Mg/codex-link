@@ -54,6 +54,7 @@ for (const file of [
   'lib/modes.js',
   'lib/task.js',
   'lib/ui-store.js',
+  'lib/workspace.js',
   'client.js',
 ]) {
   check(existsSync(join(root, file)), `缺少文件：${file}`);
@@ -73,7 +74,7 @@ check(manifest.exports?.['./client'] === './client.js', 'package.json 需要导�
 // 3. cordis.patch.yml 的 insert 行。
 const patch = read('cordis.patch.yml');
 check(patch.includes('dsh-plugin-codex-link'), 'cordis.patch.yml 缺少插件 id/name');
-check(/defaultThreadName:\s*['"]?微信工作区（DSH）/u.test(patch), 'cordis.patch.yml 缺少默认会话名');
+check(/defaultThreadName:\s*['"]?DSH 工作区/u.test(patch), 'cordis.patch.yml 缺少默认会话名');
 check(patch.includes('workspaceRoot'), 'cordis.patch.yml 缺少 workspaceRoot');
 
 // 4. README 覆盖全部工具。

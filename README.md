@@ -99,18 +99,20 @@
 dsh plugin --profile web add dsh-plugin-codex-link
 
 # 或从 GitHub 指定 tag
-dsh plugin --profile web add "github:<owner>/dsh-plugin-codex-link#v0.2.2"
+dsh plugin --profile web add "github:<owner>/dsh-plugin-codex-link#v0.3.0"
 ```
 
 DSH 桌面端：Plugins 页 → 安装 → 输入包名 `dsh-plugin-codex-link` → 重启 DSH。
 
-安装后请先在 profile 的 `cordis.patch.yml` 里覆盖成自己的工作区（默认值来自本仓库作者的环境）：
+装完**无需配置**即可使用：工作区留空时自动取「当前 DSH 会话目录」，取不到再用「用户主目录」；也可以在 设置 → Codex 联动 → 工作区 里选择固定目录（保存到 `ui.json`，优先级高于自动值）。
+
+如需显式指定，可在 profile 的 `cordis.patch.yml` 覆盖：
 
 ```yaml
 - id: dsh-plugin-codex-link
   name: dsh-plugin-codex-link
   config:
-    workspaceRoot: 'D:\your\project'
+    workspaceRoot: 'D:\your\project'   # 留空 = 自动
     defaultThreadName: '你的 Codex 会话名'
     codexPath: null
 ```
@@ -139,8 +141,8 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `enabled` | `true` | 总开关 |
-| `workspaceRoot` | `C:\Users\Bolin\Desktop\DSH\Wechat` | 默认交互工作区 |
-| `defaultThreadName` | `微信工作区（DSH）` | 默认会话名 |
+| `workspaceRoot` | `''`（自动） | 工作区目录；留空时自动：当前 DSH 会话目录 → 用户主目录 |
+| `defaultThreadName` | `DSH 工作区` | 默认会话名 |
 | `codexPath` | `null` | 显式指定 codex.exe；null 时动态发现 |
 | `sandbox` | `workspace-write` | 新建会话的 Codex 沙箱 |
 | `approvalPolicy` | `never` | 新建会话的审批策略 |
@@ -162,9 +164,10 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 设置 → **Codex 联动**（客户端插件注册 `settings.section`，与微信插件同一套机制）：
 
 - 三种操作方式以卡片形式列出，点击即切换（写入 `ui.json`，对微信/桌面端所有渠道生效）；
-- 环境卡片显示 app-server 状态、Codex 版本、默认工作区、当前默认会话；
+- **工作区卡片**：显示生效目录与来源（配置/设置页/当前会话/主目录），提供「选择文件夹…」（内置目录浏览器，可逐层进入、切盘符）、「用主目录」「恢复自动」；保存到 `ui.json`，优先级高于配置；
+- 环境卡片显示 app-server 状态、Codex 版本、当前默认会话；
 - 会话列表来自 `thread/list`，可切换「只看默认工作区 / 显示全部」，点「设为默认」立即生效；
-- 面板通过宿主 `/.dsh-codex-link` 路由与插件通信（`state`/`sessions`/`mode`/`bind`），没有 `webServer` 时工具照常工作、面板降级。
+- 面板通过宿主 `/.dsh-codex-link` 路由与插件通信（`state`/`sessions`/`mode`/`bind`/`workspace`/`fs`），没有 `webServer` 时工具照常工作、面板降级。
 
 ## 使用流程
 
@@ -212,7 +215,7 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 ## 开发与测试
 
 ```bash
-node --test test                # 单元测试（69 项）
+node --test test                # 单元测试（80 项）
 node tools/check.mjs            # 静态检查
 node scripts/integration.mjs    # 真实 Codex 集成测试（会消耗少量额度）
 node scripts/integration.mjs --protocol-only   # 只验证本地协议链路，不触发模型调用
@@ -230,7 +233,8 @@ lib/events.js        通知 → 进度事件 + 游标
 lib/bindings.js      DSH 会话 → Codex 会话绑定
 lib/modes.js         三种操作方式与 codex_task 通道决策
 lib/task.js          子智能体：codex exec --json 事件流
-lib/ui-store.js      设置页全局状态（操作方式）
+lib/ui-store.js      设置页全局状态（操作方式、工作区覆盖）
+lib/workspace.js     工作区解析（配置→设置→会话→主目录）与目录浏览
 lib/tools.js         工具规格
 lib/prompt.js        system prompt 指南
 lib/index.js         Cordis 入口装配 + 设置页路由

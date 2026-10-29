@@ -3,15 +3,16 @@
 # 注意：patch 对 config 是整块替换（不是深合并）。profile 层若要覆盖这里的
 # 某个键，必须把想保留的键全部重写。
 #
-# 默认交互工作区固定为 Codex 的 Wechat 项目；默认会话名与 Codex 桌面端里
-# 已有的「微信工作区（DSH）」保持一致，首次使用会自动定位，找不到才新建。
+# 工作区留空表示自动：当前 DSH 会话目录 → 用户主目录；也可以在
+# 设置 → Codex 联动 里选择工作区（保存到 ui.json，优先于自动值）。
+# 默认会话名为通用名，首次使用在工作区里定位，找不到才新建。
 - insert:
     - id: dsh-plugin-codex-link
       name: dsh-plugin-codex-link
       config:
         enabled: true
-        workspaceRoot: 'C:\Users\Bolin\Desktop\DSH\Wechat'
-        defaultThreadName: '微信工作区（DSH）'
+        workspaceRoot: ''
+        defaultThreadName: 'DSH 工作区'
         codexPath: null
         sandbox: workspace-write
         approvalPolicy: never

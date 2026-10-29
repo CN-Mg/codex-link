@@ -54,6 +54,24 @@
         intro: '在这里选择 DSH 操作 Codex 的方式，以及默认使用的 Codex 会话。微信、桌面端等所有渠道共用这份设置。',
         modeTitle: '操作方式',
         modeHint: '改完立即生效。',
+        workspaceTitle: '工作区',
+        workspaceHint: 'Codex 项目和会话所在目录。留空/自动时优先用当前 DSH 会话目录，其次用户主目录。',
+        workspaceChoose: '选择文件夹…',
+        workspaceHome: '用主目录',
+        workspaceAuto: '恢复自动',
+        workspaceConfigured: '配置值',
+        workspaceOverride: '设置页覆盖',
+        workspaceSource: '来源',
+        sourceConfig: '插件配置',
+        sourceSettings: '设置页',
+        sourceSession: '当前 DSH 会话目录',
+        sourceHome: '用户主目录',
+        sourceNone: '自动（未找到可用目录）',
+        browseTitle: '选择工作区文件夹',
+        browseUp: '上一层',
+        browseSelect: '选这个目录',
+        browseCancel: '取消',
+        browseEmpty: '这个目录下没有子文件夹',
         statusTitle: '环境',
         appServer: 'Codex app-server',
         version: 'Codex 版本',
@@ -113,6 +131,12 @@
           '.dsh-codex-link .cx-session-meta { color: var(--dsh-text-secondary, #888); font-size: 11px; margin-top: 2px; }',
           '.dsh-codex-link .cx-error { color: #c0392b; font-size: 12px; }',
           '.dsh-codex-link .cx-ok { color: #16a34a; font-size: 12px; }',
+          '.dsh-codex-link .cx-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }',
+          '.dsh-codex-link .cx-modal { background: var(--dsh-surface, #fff); color: inherit; border-radius: 14px; padding: 16px; width: min(560px, 92vw); max-height: 72vh; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }',
+          '.dsh-codex-link .cx-browse-path { font-size: 12px; color: var(--dsh-text-secondary, #666); word-break: break-all; background: var(--dsh-surface-muted, #f5f5f5); padding: 8px 10px; border-radius: 8px; }',
+          '.dsh-codex-link .cx-browse-list { overflow: auto; border: 1px solid var(--dsh-border, #e5e5e5); border-radius: 8px; min-height: 120px; }',
+          '.dsh-codex-link .cx-browse-entry { display: block; width: 100%; text-align: left; border: none; background: transparent; color: inherit; font: inherit; font-size: 13px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--dsh-border, #f0f0f0); }',
+          '.dsh-codex-link .cx-browse-entry:hover { background: color-mix(in srgb, var(--dsh-accent, #7c5cff) 8%, transparent); }',
         ].join('\n')
         document.head.appendChild(style)
         return () => {
@@ -161,6 +185,8 @@
         const [busy, setBusy] = React.useState('')
         const [error, setError] = React.useState('')
         const [notice, setNotice] = React.useState('')
+        const [browse, setBrowse] = React.useState(null)
+        const [browseBusy, setBrowseBusy] = React.useState(false)
 
         /** 读取全局状态。 */
         async function loadState() {
@@ -226,6 +252,46 @@
           await loadSessions(next)
         }
 
+        /** 打开文件夹浏览器。 */
+        async function openBrowse(path) {
+          setBrowseBusy(true)
+          setError('')
+          try {
+            const data = await call(`/fs?path=${encodeURIComponent(path ?? '')}`)
+            setBrowse(data)
+          } catch (failure) {
+            setError(`${copy.loadFailed}：${failure instanceof Error ? failure.message : String(failure)}`)
+          } finally {
+            setBrowseBusy(false)
+          }
+        }
+
+        /** 保存工作区；空串表示恢复自动。 */
+        async function saveWorkspace(workspaceRoot) {
+          setBusy('workspace')
+          setError('')
+          try {
+            const data = await call('/workspace', { method: 'POST', body: { workspaceRoot } })
+            setState(data.state)
+            setBrowse(null)
+            setNotice(copy.updated)
+            await loadSessions(showAll)
+          } catch (failure) {
+            setError(`${copy.saveFailed}：${failure instanceof Error ? failure.message : String(failure)}`)
+          } finally {
+            setBusy('')
+          }
+        }
+
+        /** 工作区来源的展示名。 */
+        function sourceLabel(source) {
+          if (source === 'config') return copy.sourceConfig
+          if (source === 'settings') return copy.sourceSettings
+          if (source === 'session') return copy.sourceSession
+          if (source === 'home') return copy.sourceHome
+          return copy.sourceNone
+        }
+
         if (state === null) {
           return h(
             'div',
@@ -273,6 +339,51 @@
 
           h(
             Card,
+            {
+              title: copy.workspaceTitle,
+              hint: copy.workspaceHint,
+              extra: h(
+                'div',
+                { className: 'cx-actions' },
+                h(
+                  'button',
+                  {
+                    className: 'cx-button',
+                    disabled: busy === 'workspace',
+                    onClick: () => void openBrowse(state.workspace.override || state.workspace.effective),
+                  },
+                  copy.workspaceChoose,
+                ),
+                h(
+                  'button',
+                  {
+                    className: 'cx-button',
+                    disabled: busy === 'workspace',
+                    onClick: () => void saveWorkspace(state.workspace.home),
+                  },
+                  copy.workspaceHome,
+                ),
+                state.workspace.override === ''
+                  ? null
+                  : h(
+                      'button',
+                      { className: 'cx-button', disabled: busy === 'workspace', onClick: () => void saveWorkspace('') },
+                      copy.workspaceAuto,
+                    ),
+              ),
+            },
+            h('div', { className: 'cx-row' }, h('span', null, copy.workspace), h('span', { className: 'cx-value' }, state.workspace.effective || '（无）')),
+            h('div', { className: 'cx-row' }, h('span', null, copy.workspaceSource), h('span', { className: 'cx-value' }, sourceLabel(state.workspace.source))),
+            h(
+              'div',
+              { className: 'cx-row' },
+              h('span', null, copy.workspaceOverride),
+              h('span', { className: 'cx-value' }, state.workspace.override === '' ? '（无，跟随自动）' : state.workspace.override),
+            ),
+          ),
+
+          h(
+            Card,
             { title: copy.statusTitle },
             h('div', { className: 'cx-row' }, h('span', null, copy.appServer), h('span', { className: 'cx-value' }, state.appServer.state)),
             h(
@@ -281,7 +392,6 @@
               h('span', null, copy.version),
               h('span', { className: 'cx-value' }, state.binary === null ? state.binaryError ?? '未知' : `${state.binary.version || '未知版本'}`),
             ),
-            h('div', { className: 'cx-row' }, h('span', null, copy.workspace), h('span', { className: 'cx-value' }, state.workspaceRoot)),
             h(
               'div',
               { className: 'cx-row' },
@@ -331,6 +441,73 @@
                     ),
                   ),
           ),
+
+          browse === null
+            ? null
+            : h(
+                'div',
+                {
+                  className: 'cx-modal-backdrop',
+                  onClick: (event) => {
+                    if (event.target === event.currentTarget) setBrowse(null)
+                  },
+                },
+                h(
+                  'div',
+                  { className: 'cx-modal' },
+                  h('div', { className: 'cx-card-title' }, h('span', null, copy.browseTitle)),
+                  h('div', { className: 'cx-browse-path' }, browse.path),
+                  h(
+                    'div',
+                    { className: 'cx-actions' },
+                    h(
+                      'button',
+                      {
+                        className: 'cx-button',
+                        disabled: browseBusy || browse.parent === null,
+                        onClick: () => void openBrowse(browse.parent ?? ''),
+                      },
+                      copy.browseUp,
+                    ),
+                    (browse.drives ?? []).map((drive) =>
+                      h('button', { key: drive, className: 'cx-button', onClick: () => void openBrowse(drive) }, drive),
+                    ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'cx-browse-list' },
+                    browse.error
+                      ? h('p', { className: 'cx-error' }, browse.error)
+                      : browse.entries.length === 0
+                        ? h('p', { className: 'cx-hint' }, copy.browseEmpty)
+                        : browse.entries.map((entry) =>
+                            h(
+                              'button',
+                              {
+                                key: entry.path,
+                                className: 'cx-browse-entry',
+                                onClick: () => void openBrowse(entry.path),
+                              },
+                              `📁 ${entry.name}`,
+                            ),
+                          ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'cx-actions' },
+                    h(
+                      'button',
+                      {
+                        className: 'cx-button cx-primary',
+                        disabled: busy === 'workspace',
+                        onClick: () => void saveWorkspace(browse.path),
+                      },
+                      copy.browseSelect,
+                    ),
+                    h('button', { className: 'cx-button', onClick: () => setBrowse(null) }, copy.browseCancel),
+                  ),
+                ),
+              ),
 
           error === '' ? null : h('p', { className: 'cx-error' }, error),
           notice === '' ? null : h('p', { className: 'cx-ok' }, notice),
