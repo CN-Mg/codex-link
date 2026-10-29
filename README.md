@@ -92,6 +92,33 @@
 
 ## 安装
 
+### 从 npm 安装（其他用户）
+
+```powershell
+# DSH CLI / Web profile
+dsh plugin --profile web add dsh-plugin-codex-link
+
+# 或从 GitHub 指定 tag
+dsh plugin --profile web add "github:<owner>/dsh-plugin-codex-link#v0.2.2"
+```
+
+DSH 桌面端：Plugins 页 → 安装 → 输入包名 `dsh-plugin-codex-link` → 重启 DSH。
+
+安装后请先在 profile 的 `cordis.patch.yml` 里覆盖成自己的工作区（默认值来自本仓库作者的环境）：
+
+```yaml
+- id: dsh-plugin-codex-link
+  name: dsh-plugin-codex-link
+  config:
+    workspaceRoot: 'D:\your\project'
+    defaultThreadName: '你的 Codex 会话名'
+    codexPath: null
+```
+
+Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面端。
+
+### 从本地目录安装（开发调试）
+
 本插件以 `dsh.bundle.patch` 的形式插入 desktop profile。desktop profile 由 DSH 桌面端独占管理，不能用命令行 `dsh plugin --profile desktop add`。
 
 **推荐：**桌面端 DSH → Plugins → 安装 → 填本仓库的绝对路径（插件管理器支持绝对路径/`file:` spec）→ 重启 DSH。
@@ -102,6 +129,8 @@
 2. 在 `dependencies` 加 `"dsh-plugin-codex-link": "link:C:\\Users\\Bolin\\Desktop\\DSH\\codex-link"`；
 3. 在 `dsh.profile.bundles` 末尾追加 `"dsh-plugin-codex-link"`；
 4. 在 profile 目录用 DSH 自带的 pnpm 执行安装，重启 DSH。
+
+维护者发布到 GitHub / npm 的完整步骤见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 
 ## 配置
 

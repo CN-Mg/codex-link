@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-codex-link",
   "version": "0.2.2",
-  "description": "DSH 与 Codex 的会话控制桥：切换 Codex 会话、发送指令、读取过程、派遣子智能体，并提供设置页选择面板。",
+  "description": "Just for Qiangwei.[DSH 与 Codex 的会话控制桥：切换 Codex 会话、发送指令、读取过程、派遣子智能体，并提供设置页选择面板……]",
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",
@@ -51,5 +51,10 @@
     "openai-codex",
     "app-server",
     "会话控制"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "author": "Bolin"
 }
