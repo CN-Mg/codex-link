@@ -78,11 +78,14 @@ test('apply 注册 10 个工具、1 段指南、1 组设置页路由与 1 个清
   assert.match(sections[0].text(), /codex_task/u);
   assert.equal(routes.length, 1);
   assert.equal(routes[0].path, '/.dsh-codex-link');
-  assert.equal(effects.length, 1);
-  assert.equal(effects[0].label, 'dsh-plugin-codex-link: shutdown');
+  assert.equal(effects.length, 2);
+  const labels = effects.map((effect) => effect.label);
+  assert.ok(labels.includes('dsh-plugin-codex-link: panel routes'));
+  assert.ok(labels.includes('dsh-plugin-codex-link: shutdown'));
 
   // 卸载钩子必须可执行且不抛异常（此时 app-server 尚未启动）。
-  const dispose = effects[0].fn();
+  const shutdown = effects.find((effect) => effect.label === 'dsh-plugin-codex-link: shutdown');
+  const dispose = shutdown.fn();
   assert.doesNotThrow(() => dispose());
 });
 
@@ -93,6 +96,54 @@ test('enabled=false 时不注册任何工具', () => {
   assert.equal(sections.length, 0);
   assert.equal(effects.length, 0);
   assert.equal(routes.length, 0);
+});
+
+test('webServer 迟到时通过 ctx.inject 等待并注册路由', () => {
+  const tools = [];
+  const injectCalls = [];
+  const routes = [];
+  const ctx = {
+    tools: {
+      register(spec) {
+        tools.push(spec);
+        return () => {};
+      },
+    },
+    get() {
+      return undefined;
+    },
+    effect() {},
+    inject(names, callback) {
+      injectCalls.push({ names, callback });
+      return {};
+    },
+  };
+  apply(ctx, {});
+  assert.deepEqual(injectCalls[0].names, ['webServer']);
+  // 此时 webServer 还不存在，路由没有注册。
+  assert.equal(routes.length, 0);
+
+  // 模拟 webServer 就绪后的子上下文。
+  const childEffects = [];
+  const routeCtx = {
+    get(name) {
+      if (name !== 'webServer') return undefined;
+      return {
+        register(definition) {
+          routes.push(definition);
+          return () => {};
+        },
+      };
+    },
+    effect(fn, label) {
+      childEffects.push({ fn, label });
+    },
+  };
+  injectCalls[0].callback(routeCtx);
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].path, '/.dsh-codex-link');
+  assert.equal(childEffects.length, 1);
+  assert.equal(childEffects[0].label, 'dsh-plugin-codex-link: panel routes');
 });
 
 test('宿主缺少工具服务时安全降级', () => {
