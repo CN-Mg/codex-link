@@ -1,11 +1,22 @@
 # dsh-plugin-codex-link
 
-在 DSH 里驾驶 Codex：**切换 Codex 会话、发送指令、实时读取运行过程、取回最终结果**。
+在 DSH 里驾驶 Codex：**切换 Codex 会话、发送指令、实时读取过程、派遣子智能体**，并在设置页用左侧面板切换操作方式。
 
-- Codex 侧**不需要安装任何插件**：插件使用 Codex 自带的 `codex app-server`（JSON-RPC over stdio）。
-- DSH 侧只依赖宿主提供的 `ctx.tools` 服务；插件本身零 npm 依赖（只用 Node 内置模块）。
+- Codex 侧**不需要安装任何插件**：插件使用 Codex 自带的 `codex app-server`（JSON-RPC over stdio）与 `codex exec --json`。
+- DSH 侧只依赖宿主提供的 `ctx.tools` / `webServer` 服务；插件本身零 npm 依赖（只用 Node 内置模块）。
+- 设置 → **Codex 联动**：左侧导航里的选择面板，用来切换三种操作方式、指定默认会话。
 - 默认交互工作区：`C:\Users\Bolin\Desktop\DSH\Wechat`
 - 默认会话名：`微信工作区（DSH）`（不存在时自动创建）
+
+## 三种操作方式
+
+| 方式 | 说明 | 主要工具 |
+|---|---|---|
+| 直控会话 | DSH 直接驱动已绑定的 Codex 会话，实时读过程，可追加/中止 | `codex_send` / `codex_watch` / `codex_result` |
+| 子智能体 | 每次任务起独立 Codex 进程执行，只回最终结果，不占用你正在看的会话 | `codex_task`（`channel=isolated`） |
+| 混合（默认） | 有绑定会话走直控；没有绑定或任务要求隔离时走子智能体 | 两者皆可 |
+
+方式保存在 `<DSH_HOME>/codex-link/ui.json`，设置页可随时切换；`codex_task` 的 `channel` 参数可临时覆盖。
 
 ## 能力
 
@@ -13,11 +24,13 @@
 |---|---|
 | 查看/切换指定 Codex 会话 | `codex_threads` / `codex_use` |
 | 发送指令、运行中追加或中止 | `codex_send`（`mode=auto/steer/interrupt`） |
+| 派遣子智能体，只取最终结果 | `codex_task`（`channel=auto/isolated/session`） |
 | 读取运行过程（工具调用、命令、文件改动、错误） | `codex_watch`（游标续读） |
 | 取最终回答、耗时、token 用量 | `codex_result` |
 | 查询 5 小时 / 7 天额度与重置时间 | `codex_usage` |
-| 健康检查（连接、版本、绑定） | `codex_status` |
+| 健康检查（连接、版本、方式、绑定） | `codex_status` |
 | 把 Codex 窗口带到项目 | `codex_open_project` |
+| 切换方式 / 指定默认会话 | 设置 → Codex 联动（左侧面板） |
 
 ## 工具
 
@@ -45,6 +58,15 @@
 - 本插件发起的回合并未结束：`steer` 追加输入；
 - 其它 Codex 客户端正在写该会话：明确返回 `BUSY_THREAD`，不抢写；
 - `wait=true`：工具内等待结束并直接返回回答。
+
+### codex_task
+
+参数：`task`（必填）、`channel?`（`auto`/`isolated`/`session`）、`thread?`、`cwd?`、`sandbox?`、`model?`、`timeoutMs?`。
+
+- `isolated`：`codex exec --json` 起独立进程，解析事件流后只返回最终回答、线程 id、耗时与用量；不写你正打开的会话。
+- `session`：在绑定会话里执行并等结果（等价于 `codex_send` + `wait=true`）。
+- `auto`：按当前操作方式与绑定情况决定。
+- 返回的线程 id 可用 `codex_use <threadId>` 接管，之后走直控看过程。
 
 ### codex_watch
 
@@ -103,14 +125,23 @@
 | `summaryChars` | `500` | summary 单事件字符上限 |
 | `fullChars` | `4000` | full 单事件字符上限 |
 | `focusMode` | `off` | 窗口聚焦模式（v1 只支持 off/project） |
+| `mode` | `hybrid` | 默认操作方式：`direct`/`subagent`/`hybrid`（设置页可切换） |
+| `maxParallelTasks` | `2` | 同时运行的独立子任务上限 |
+
+## 设置页（左侧面板）
+
+设置 → **Codex 联动**（客户端插件注册 `settings.section`，与微信插件同一套机制）：
+
+- 三种操作方式以卡片形式列出，点击即切换（写入 `ui.json`，对微信/桌面端所有渠道生效）；
+- 环境卡片显示 app-server 状态、Codex 版本、默认工作区、当前默认会话；
+- 会话列表来自 `thread/list`，可切换「只看默认工作区 / 显示全部」，点「设为默认」立即生效；
+- 面板通过宿主 `/.dsh-codex-link` 路由与插件通信（`state`/`sessions`/`mode`/`bind`），没有 `webServer` 时工具照常工作、面板降级。
 
 ## 使用流程
 
-1. `codex_threads`（可选）→ `codex_use` 绑定目标会话；
-2. `codex_send` 发指令，拿到 `turnId`；
-3. `codex_watch` 循环读进度（建议每轮 8 秒，最多 3 条进度播报）；
-4. `codex_result` 取最终回答与用量；
-5. 需要中止：`codex_interrupt`。
+1. 需要直控时：`codex_threads`（可选）→ `codex_use` 绑定目标会话 → `codex_send` → `codex_watch` 循环 → `codex_result`；需要中止用 `codex_interrupt`。
+2. 需要子智能体时：`codex_task` 一次调用，拿最终回答与线程 id；要接管该线程再 `codex_use <threadId>`。
+3. 方式切换：打开 设置 → Codex 联动，在三种操作方式里点选；或用 `codex_task` 的 `channel` 参数临时指定。
 
 微信渠道建议：一轮任务最多 3 条进度 + 1 条最终结果，避免打满 10 条消息配额。
 
@@ -126,6 +157,9 @@
 | `NOT_RUNNING` | 没有正在运行的回合 | 无需中止 |
 | `TURN_TIMEOUT` | 等待回合超时 | 继续 `codex_watch` 或 `codex_interrupt` |
 | `RPC_TIMEOUT` / `RPC_ERROR` | app-server 请求超时/失败 | 重试或重启 Codex |
+| `TASK_FAILED` | 子智能体进程失败 | 看错误详情中的 Codex 原因，必要时改成 session 通道 |
+| `TASK_TIMEOUT` | 子智能体超时 | 调大 `timeoutMs` 或拆小任务 |
+| `TASK_BUSY` | 并发的子任务已达上限 | 等其中一个结束（`maxParallelTasks` 可调） |
 
 ## 安全与边界
 
@@ -137,7 +171,8 @@
 
 ## 已知限制
 
-- **Codex 桌面端可能不会实时刷新插件新建的回合**。若刷新后仍看不到，重开该会话；v2 会补 `codex queue` + rollout 增量读取的回退路径。
+- **Codex 桌面端可能不会实时刷新插件新建的回合**。若刷新后仍看不到，重开该会话；后续会补 `codex queue` + rollout 增量读取的回退路径。
+- **插件（含设置页面板）更新后需要重启 DSH** 才会加载新的 host/client 代码；`client.js` 由外壳在启动时注册。
 - **`thread/list` 不返回空会话**：刚创建、还没有任何回合的会话不会出现在 `codex_threads` 里（Codex 服务端行为）。插件把默认会话 ID 记在绑定文件的 `__default__` 键中，避免重复新建。
 - **线程级窗口聚焦没有官方 API**：`codex://` 深链在本机未注册可执行处理器，v1 只做逻辑切换与项目级窗口操作；键盘 UI 自动化留作 v2 可选（默认关闭）。
 - 同一会话被桌面端和 DSH 同时写入时，以 `BUSY_THREAD` 明确拒绝，不并发抢写。
@@ -148,7 +183,7 @@
 ## 开发与测试
 
 ```bash
-node --test test                # 单元测试（47 项）
+node --test test                # 单元测试（56 项）
 node tools/check.mjs            # 静态检查
 node scripts/integration.mjs    # 真实 Codex 集成测试（会消耗少量额度）
 node scripts/integration.mjs --protocol-only   # 只验证本地协议链路，不触发模型调用
@@ -164,9 +199,13 @@ lib/app-server.js    子进程生命周期
 lib/threads.js       会话匹配/发送/中止/结果
 lib/events.js        通知 → 进度事件 + 游标
 lib/bindings.js      DSH 会话 → Codex 会话绑定
+lib/modes.js         三种操作方式与 codex_task 通道决策
+lib/task.js          子智能体：codex exec --json 事件流
+lib/ui-store.js      设置页全局状态（操作方式）
 lib/tools.js         工具规格
 lib/prompt.js        system prompt 指南
-lib/index.js         Cordis 入口装配
+lib/index.js         Cordis 入口装配 + 设置页路由
+client.js            设置页左侧面板（client plugin）
 ```
 
 ## 许可

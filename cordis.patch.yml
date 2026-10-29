@@ -25,3 +25,5 @@
         summaryChars: 500
         fullChars: 4000
         focusMode: off
+        mode: hybrid
+        maxParallelTasks: 2

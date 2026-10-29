@@ -15,12 +15,14 @@ import { apply } from '../lib/index.js';
  *   tools: Array<any>,
  *   sections: Array<any>,
  *   effects: Array<{ fn: Function, label: string }>,
+ *   routes: Array<any>,
  * }} 假上下文与记录。
  */
 function fakeContext() {
   const tools = [];
   const sections = [];
   const effects = [];
+  const routes = [];
   const ctx = {
     tools: {
       register(spec) {
@@ -29,6 +31,14 @@ function fakeContext() {
       },
     },
     get(name) {
+      if (name === 'webServer') {
+        return {
+          register(definition) {
+            routes.push(definition);
+            return () => {};
+          },
+        };
+      }
       if (name !== 'systemPrompt') return undefined;
       return {
         section(section) {
@@ -40,13 +50,13 @@ function fakeContext() {
       effects.push({ fn, label });
     },
   };
-  return { ctx, tools, sections, effects };
+  return { ctx, tools, sections, effects, routes };
 }
 
-test('apply 注册 9 个工具、1 段指南与 1 个清理钩子', () => {
-  const { ctx, tools, sections, effects } = fakeContext();
+test('apply 注册 10 个工具、1 段指南、1 组设置页路由与 1 个清理钩子', () => {
+  const { ctx, tools, sections, effects, routes } = fakeContext();
   apply(ctx, {});
-  assert.equal(tools.length, 9);
+  assert.equal(tools.length, 10);
   assert.deepEqual(
     tools.map((spec) => spec.name),
     [
@@ -54,6 +64,7 @@ test('apply 注册 9 个工具、1 段指南与 1 个清理钩子', () => {
       'codex_threads',
       'codex_use',
       'codex_send',
+      'codex_task',
       'codex_watch',
       'codex_result',
       'codex_interrupt',
@@ -64,6 +75,9 @@ test('apply 注册 9 个工具、1 段指南与 1 个清理钩子', () => {
   assert.equal(sections.length, 1);
   assert.equal(sections[0].name, 'codex-link:guide');
   assert.match(sections[0].text(), /codex_send/u);
+  assert.match(sections[0].text(), /codex_task/u);
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].path, '/.dsh-codex-link');
   assert.equal(effects.length, 1);
   assert.equal(effects[0].label, 'dsh-plugin-codex-link: shutdown');
 
@@ -73,11 +87,12 @@ test('apply 注册 9 个工具、1 段指南与 1 个清理钩子', () => {
 });
 
 test('enabled=false 时不注册任何工具', () => {
-  const { ctx, tools, sections, effects } = fakeContext();
+  const { ctx, tools, sections, effects, routes } = fakeContext();
   apply(ctx, { enabled: false });
   assert.equal(tools.length, 0);
   assert.equal(sections.length, 0);
   assert.equal(effects.length, 0);
+  assert.equal(routes.length, 0);
 });
 
 test('宿主缺少工具服务时安全降级', () => {

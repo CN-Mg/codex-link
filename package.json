@@ -1,12 +1,19 @@
 {
   "name": "dsh-plugin-codex-link",
-  "version": "0.1.0",
-  "description": "DSH 与 Codex 的会话控制桥：在 DSH 里切换 Codex 会话、发送指令、读取运行过程并取回结果。",
+  "version": "0.2.0",
+  "description": "DSH 与 Codex 的会话控制桥：切换 Codex 会话、发送指令、读取过程、派遣子智能体，并提供设置页选择面板。",
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
   "files": [
     "lib/**/*.js",
+    "client.js",
     "cordis.patch.yml",
     "README.md",
     "CHANGELOG.md",
@@ -25,6 +32,10 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
     },
     "compatibility": {
       "dshReleases": {

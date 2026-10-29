@@ -29,6 +29,7 @@ function fakeController(overrides = {}) {
       threads: make('threads'),
       use: make('use'),
       send: make('send'),
+      task: make('task'),
       watch: make('watch'),
       result: make('result'),
       interrupt: make('interrupt'),
@@ -51,7 +52,7 @@ function specOf(specs, name) {
   return spec;
 }
 
-test('注册全部 9 个工具且参数是 object schema', () => {
+test('注册全部 10 个工具且参数是 object schema', () => {
   const { controller } = fakeController();
   const specs = buildToolSpecs({ controller });
   assert.deepEqual(
@@ -61,6 +62,7 @@ test('注册全部 9 个工具且参数是 object schema', () => {
       'codex_threads',
       'codex_use',
       'codex_send',
+      'codex_task',
       'codex_watch',
       'codex_result',
       'codex_interrupt',
@@ -74,6 +76,8 @@ test('注册全部 9 个工具且参数是 object schema', () => {
     assert.equal(typeof spec.execute, 'function');
   }
   assert.deepEqual(specOf(specs, 'codex_send').parameters.required, ['text']);
+  assert.deepEqual(specOf(specs, 'codex_task').parameters.required, ['task']);
+  assert.deepEqual(specOf(specs, 'codex_task').parameters.properties.channel.enum, ['auto', 'isolated', 'session']);
 });
 
 test('execute 透传 sessionId 并渲染文本块', async () => {
@@ -106,6 +110,23 @@ test('普通异常回退为 ERROR 前缀', async () => {
   const specs = buildToolSpecs({ controller });
   const value = await specOf(specs, 'codex_usage').execute({}, {});
   assert.deepEqual(value, { text: 'ERROR: boom' });
+});
+
+test('codex_task 透传通道参数并映射错误码', async () => {
+  const { controller } = fakeController({ task: async (args, sessionId) => `task:${sessionId}:${args.channel ?? 'auto'}` });
+  const specs = buildToolSpecs({ controller });
+  const value = await specOf(specs, 'codex_task').execute({ task: '做事', channel: 'isolated' }, { agent: { session: { id: 's1' } } });
+  assert.deepEqual(value, { text: 'task:s1:isolated' });
+
+  const failing = fakeController({
+    task: async () => {
+      const error = new Error('超过时限');
+      error.code = 'TASK_TIMEOUT';
+      throw error;
+    },
+  });
+  const failed = await specOf(buildToolSpecs({ controller: failing.controller }), 'codex_task').execute({ task: 'x' }, {});
+  assert.deepEqual(failed, { text: 'TASK_TIMEOUT: 超过时限' });
 });
 
 test('缺少 exec 上下文时不抛异常', async () => {

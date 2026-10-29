@@ -51,6 +51,10 @@ for (const file of [
   'lib/bindings.js',
   'lib/tools.js',
   'lib/prompt.js',
+  'lib/modes.js',
+  'lib/task.js',
+  'lib/ui-store.js',
+  'client.js',
 ]) {
   check(existsSync(join(root, file)), `缺少文件：${file}`);
 }
@@ -63,6 +67,8 @@ check(manifest.main === 'lib/index.js', 'package.json 的 main 必须指向 lib/
 check(typeof manifest.dsh?.bundle?.patch === 'string', 'package.json 缺少 dsh.bundle.patch');
 check(existsSync(join(root, manifest.dsh?.bundle?.patch ?? '')), 'dsh.bundle.patch 指向的文件不存在');
 check(manifest.dsh?.bundle?.patch === './cordis.patch.yml', 'bundle patch 应指向 ./cordis.patch.yml');
+check(typeof manifest.dsh?.client === 'object' && manifest.dsh.client.platform === 'web', 'package.json 缺少 dsh.client（web）');
+check(manifest.exports?.['./client'] === './client.js', 'package.json 需要导出 ./client');
 
 // 3. cordis.patch.yml 的 insert 行。
 const patch = read('cordis.patch.yml');
@@ -77,6 +83,7 @@ for (const tool of [
   'codex_threads',
   'codex_use',
   'codex_send',
+  'codex_task',
   'codex_watch',
   'codex_result',
   'codex_interrupt',
