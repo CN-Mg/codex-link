@@ -56,5 +56,13 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "author": "Bolin"
+  "author": "Bolin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CN-Mg/codex-link.git"
+  },
+  "homepage": "https://github.com/CN-Mg/codex-link#readme",
+  "bugs": {
+    "url": "https://github.com/CN-Mg/codex-link/issues"
+  }
 }
