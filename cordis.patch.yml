@@ -28,3 +28,4 @@
         focusMode: off
         mode: hybrid
         maxParallelTasks: 2
+        queueFallback: true

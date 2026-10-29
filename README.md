@@ -158,6 +158,7 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 | `focusMode` | `off` | 窗口聚焦模式（v1 只支持 off/project） |
 | `mode` | `hybrid` | 默认操作方式：`direct`/`subagent`/`hybrid`（设置页可切换） |
 | `maxParallelTasks` | `2` | 同时运行的独立子任务上限 |
+| `queueFallback` | `true` | 直控目标被 Codex 占用时，自动用官方 queue 投递到该会话 |
 
 ## 设置页（左侧面板）
 
@@ -168,6 +169,17 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 - 环境卡片显示 app-server 状态、Codex 版本、当前默认会话；
 - 会话列表来自 `thread/list`，可切换「只看默认工作区 / 显示全部」，点「设为默认」立即生效；
 - 面板通过宿主 `/.dsh-codex-link` 路由与插件通信（`state`/`sessions`/`mode`/`bind`/`workspace`/`fs`），没有 `webServer` 时工具照常工作、面板降级。
+
+## 直控遇到占用：queue 回退
+
+当直控目标就是你在 Codex 里打开的会话时，桌面端持有写锁（`active writer`），插件无法直接 resume。此时：
+
+1. `codex_send` 自动改用 Codex 官方 `codex queue --thread <id> --message <text>` 把指令投进该会话；
+2. 消息会出现在你打开的 Codex 对话里并由桌面端执行；
+3. `codex_watch` / `codex_result` 改从该会话的 rollout JSONL 增量读取过程、最终回答、耗时与用量；
+4. `codex_interrupt` 在 queue 通道下不可用（返回 `NOT_SUPPORTED`），请在 Codex 里停止。
+
+配置 `queueFallback: false` 可关闭回退（此时直接返回 `BUSY_THREAD`）。
 
 ## 使用流程
 
@@ -215,7 +227,7 @@ Codex 侧不需要安装任何插件，只需已安装并登录 Codex CLI/桌面
 ## 开发与测试
 
 ```bash
-node --test test                # 单元测试（80 项）
+node --test test                # 单元测试（88 项）
 node tools/check.mjs            # 静态检查
 node scripts/integration.mjs    # 真实 Codex 集成测试（会消耗少量额度）
 node scripts/integration.mjs --protocol-only   # 只验证本地协议链路，不触发模型调用
@@ -235,6 +247,8 @@ lib/modes.js         三种操作方式与 codex_task 通道决策
 lib/task.js          子智能体：codex exec --json 事件流
 lib/ui-store.js      设置页全局状态（操作方式、工作区覆盖）
 lib/workspace.js     工作区解析（配置→设置→会话→主目录）与目录浏览
+lib/queue-bridge.js  直控占用时的官方 queue 投递
+lib/rollout-tail.js  rollout JSONL 增量读取（queue 回退的结果/过程）
 lib/tools.js         工具规格
 lib/prompt.js        system prompt 指南
 lib/index.js         Cordis 入口装配 + 设置页路由

@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-codex-link",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Just for Qiangwei.[DSH 与 Codex 的会话控制桥：切换 Codex 会话、发送指令、读取过程、派遣子智能体，并提供设置页选择面板……]",
   "type": "module",
   "license": "MIT",

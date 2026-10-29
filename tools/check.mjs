@@ -55,6 +55,8 @@ for (const file of [
   'lib/task.js',
   'lib/ui-store.js',
   'lib/workspace.js',
+  'lib/queue-bridge.js',
+  'lib/rollout-tail.js',
   'client.js',
 ]) {
   check(existsSync(join(root, file)), `缺少文件：${file}`);

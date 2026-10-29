@@ -2,6 +2,13 @@
 
 本项目遵循语义化版本；每次发布在此记录一行摘要。
 
+## 0.4.0 — 2026-10-29
+
+- 新增直控的 **queue 回退通道**：目标会话被 Codex 桌面端占用（`active writer`）时，`codex_send` 自动改用官方 `codex queue` 把指令投进该会话，消息出现在用户打开的 Codex 窗口里。
+- 新增 rollout 增量读取：`codex_watch` / `codex_result` 在 queue 通道下从会话的 rollout JSONL 读取工具调用、回答、耗时与用量。
+- 新增 `queueFallback` 配置（默认开启）；queue 通道下 `codex_interrupt` 返回 `NOT_SUPPORTED`（请在 Codex 内停止）。
+- 新增 `scripts/queue-smoke.mjs` 真实链路冒烟脚本，并补 queue/rollout 单测。
+
 ## 0.3.0 — 2026-10-29
 
 - 工作区可配置化：
