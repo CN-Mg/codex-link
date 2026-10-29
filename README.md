@@ -183,7 +183,7 @@
 ## 开发与测试
 
 ```bash
-node --test test                # 单元测试（56 项）
+node --test test                # 单元测试（69 项）
 node tools/check.mjs            # 静态检查
 node scripts/integration.mjs    # 真实 Codex 集成测试（会消耗少量额度）
 node scripts/integration.mjs --protocol-only   # 只验证本地协议链路，不触发模型调用
